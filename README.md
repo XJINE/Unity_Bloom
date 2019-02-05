@@ -1,6 +1,6 @@
-# Unity_BloomEffect
+# Unity_Bloom
 
-<img src="https://github.com/XJINE/Unity_BloomEffect/blob/master/Screenshot.jpg" width="100%" height="auto" />
+<img src="https://github.com/XJINE/Unity_Bloom/blob/master/Screenshot.jpg" width="100%" height="auto" />
 
 Simple logic bloom effect.
 
@@ -8,7 +8,7 @@ Simple logic bloom effect.
 
 You can import this asset from UnityPackage.
 
-- [BloomEffect.unitypackage](https://github.com/XJINE/Unity_BloomEffect/blob/master/BloomEffect.unitypackage)
+- [Bloom.unitypackage](https://github.com/XJINE/Unity_Bloom/blob/master/Bloom.unitypackage)
 
 ### Dependencies
 

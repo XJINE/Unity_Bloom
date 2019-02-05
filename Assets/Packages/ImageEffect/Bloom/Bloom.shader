@@ -1,14 +1,14 @@
-﻿Shader "ImageEffect/BloomEffect"
+﻿Shader "ImageEffect/Bloom"
 {
     Properties
     {
         [HideInInspector]
         _MainTex("Texture", 2D) = "white" {}
 
-        [KeywordEnum(ADDITIVE, SCREEN, DEBUG)]
-        _BLOOM_TYPE("Bloom Type", Float) = 0
+        [KeywordEnum(ADDITIVE, SCREEN, COLORED_ADDITIVE, COLORED_SCREEN, DEBUG)]
+        _COMPOSITE_TYPE("Composite Type", Float) = 0
 
-        _Parameter("(Threhold, Intensity, SamplingFrequency, None)", Vector) = (0.8, 1.0, 1.0, 0.0)
+        _Parameter("(Threhold, Intensity, SamplingFrequency, -)", Vector) = (0.8, 1.0, 1.0, 0.0)
     }
     SubShader
     {
@@ -29,7 +29,7 @@
         ENDCG
 
         // STEP:1
-        // Get (resized) brightness image.
+        // Get resized brightness image.
 
         Pass
         {
@@ -52,16 +52,14 @@
 
         CGINCLUDE
 
-        struct v2f_img_gaussian
+        struct v2f_gaussian
         {
             float4 pos    : SV_POSITION;
             half2  uv     : TEXCOORD0;
             half2  offset : TEXCOORD1;
-            UNITY_VERTEX_INPUT_INSTANCE_ID
-            UNITY_VERTEX_OUTPUT_STEREO
         };
 
-        float4 frag_gaussian (v2f_img_gaussian input) : SV_Target
+        float4 frag_gaussian (v2f_gaussian input) : SV_Target
         {
             return GaussianFilter(_MainTex, _MainTex_ST, input.uv, input.offset);
         }
@@ -75,13 +73,9 @@
             #pragma vertex vert
             #pragma fragment frag_gaussian
 
-            v2f_img_gaussian vert(appdata_img v)
+            v2f_gaussian vert(appdata_img v)
             {
-                v2f_img_gaussian o;
-
-                UNITY_INITIALIZE_OUTPUT(v2f_img_gaussian, o);
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+                v2f_gaussian o;
 
                 o.pos    = UnityObjectToClipPos (v.vertex);
                 o.uv     = v.texcoord;
@@ -100,12 +94,9 @@
             #pragma vertex vert
             #pragma fragment frag_gaussian
 
-            v2f_img_gaussian vert(appdata_img v)
+            v2f_gaussian vert(appdata_img v)
             {
-                v2f_img_gaussian o;
-                UNITY_INITIALIZE_OUTPUT(v2f_img_gaussian, o);
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+                v2f_gaussian o;
 
                 o.pos    = UnityObjectToClipPos (v.vertex);
                 o.uv     = v.texcoord;
@@ -118,7 +109,7 @@
         }
 
         // STEP:4
-        // Composite.
+        // Composite to original.
 
         Pass
         {
@@ -126,35 +117,34 @@
 
             #pragma vertex vert_img
             #pragma fragment frag
-            #pragma multi_compile _BLOOM_TYPE_ADDITIVE _BLOOM_TYPE_SCREEN _BLOOM_TYPE_DEBUG
-            #pragma multi_compile _ _BLOOM_COLOR
+            #pragma multi_compile _COMPOSITE_TYPE_ADDITIVE _COMPOSITE_TYPE_SCREEN _COMPOSITE_TYPE_COLORED_ADDITIVE _COMPOSITE_TYPE_COLORED_SCREEN _COMPOSITE_TYPE_DEBUG
 
-            sampler2D _BloomTex;
-            float4    _BloomColor;
-            float     _BLOOM_TYPE;
+            sampler2D _CompositeTex;
+            float4    _CompositeColor;
 
             fixed4 frag(v2f_img input) : SV_Target
             {
-                float4 mainColor  = tex2D(_MainTex,  input.uv);
-                float4 bloomColor = tex2D(_BloomTex, input.uv);
+                float4 mainColor      = tex2D(_MainTex,      input.uv);
+                float4 compositeColor = tex2D(_CompositeTex, input.uv);
 
-                #ifdef _BLOOM_COLOR
+                #if defined(_COMPOSITE_TYPE_COLORED_ADDITIVE) || defined(_COMPOSITE_TYPE_COLORED_SCREEN)
 
-                bloomColor.rgb = (bloomColor.r + bloomColor.g + bloomColor.b) * 0.3333 * _BloomColor;
+                compositeColor.rgb = (compositeColor.r + compositeColor.g + compositeColor.b)
+                                    * 0.3333 * _CompositeColor;
 
                 #endif
 
-                #ifdef _BLOOM_TYPE_SCREEN
+                #if defined(_COMPOSITE_TYPE_SCREEN) || defined(_COMPOSITE_TYPE_COLORED_SCREEN)
 
-                return mainColor + bloomColor - saturate(mainColor * bloomColor);
+                return saturate(mainColor + compositeColor - saturate(mainColor * compositeColor));
 
-                #elif _BLOOM_TYPE_ADDITIVE
+                #elif defined(_COMPOSITE_TYPE_ADDITIVE) || defined(_COMPOSITE_TYPE_COLORED_ADDITIVE)
 
-                return mainColor + bloomColor;
+                return saturate(mainColor + compositeColor);
 
                 #else
 
-                return bloomColor;
+                return compositeColor;
 
                 #endif
             }
